@@ -23,6 +23,16 @@ let move initialPosition command =
 let followPlan plan =
     List.fold move {Horizontal=0;Depth=0} plan
 
+let toCommand (input:String) =
+    let splited = input.Split()
+    let direction =
+        match splited[0] with
+        |   "forward" -> Forward
+        |    "up" -> Up
+        |   "down" -> Down
+        | _ -> failwith "Unknow command"
+    splited[1] |> int |> direction
+
 [<Fact>]
 let ``Forward adds value to Horizontal position`` () =
     let newPosition =  move {Horizontal= 0; Depth=0} (Forward 1)
@@ -61,3 +71,29 @@ let ``A submarine follows a plan`` () =
     let newPosition = followPlan plan 
     Assert.Equal({Horizontal = 15;Depth=10},newPosition)
 
+[<Fact>]
+let ``Can translate Forward`` () = 
+    let input = "forward 3"
+    let result = toCommand input
+    Assert.Equal(Forward 3, result)
+
+[<Fact>]
+let ``Can translate Up`` () = 
+    let input = "up 3"
+    let result = toCommand input
+    Assert.Equal(Up 3, result)
+
+[<Fact>]
+let ``Can translate Down`` () = 
+    let input = "down 3"
+    let result = toCommand input
+    Assert.Equal(Down 3, result)
+
+[<Fact>]
+let ``Day two Part Two`` () =
+    let plan = 
+        IO.File.ReadAllLines "day2Input.txt"
+        |> Array.toList
+        |> List.map toCommand
+    let position  = followPlan plan
+    Assert.Equal({Horizontal = 1957; Depth=955},position)
