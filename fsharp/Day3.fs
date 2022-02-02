@@ -17,15 +17,17 @@ let sample = @"00100
 00010
 01010"
 
-let calculateGamma (diagnosticReport: String list) =
+
+let calculate (values:int*int) (diagnosticReport: String list)  =
+
     let numberOfSamples = List.length diagnosticReport
-    
+
     let getColumnFromReport column  =
         diagnosticReport |> List.map (fun word -> word[column])
 
-    let determineMostCommonBit list = 
+    let determineMostCommonBit list =
         let sum = list |> List.sumBy (string>>int)
-        if sum > numberOfSamples / 2 then 0b1 else 0b0  
+        if sum > numberOfSamples / 2 then fst values else snd values  
 
     let wordLength = diagnosticReport.Head.Length
 
@@ -33,8 +35,11 @@ let calculateGamma (diagnosticReport: String list) =
     |> List.map (getColumnFromReport >> determineMostCommonBit)
     |> List.reduce (fun word bit-> (word <<< 1) + bit)
 
-let getEpsilon gamma =
-    gamma |> (~~~) |> ((&&&) 0b011111) |>  int
+
+let calculateGamma = calculate (1, 0)
+
+let calculateEpsilon = calculate (0, 1)
+    
 
 [<Fact>]
 let ``???`` () =
@@ -67,6 +72,16 @@ let ``epsilon`` () =
     let result = 
         sample.Split(Environment.NewLine)
         |> Array.toList
-        |>  calculateGamma
-        |> getEpsilon 
+        |> calculateEpsilon 
     Assert.Equal(9,result)
+
+
+[<Fact>]
+let ``Day 3 part 1`` () =
+    
+    let report =
+        IO.File.ReadAllLines "day3Input.txt"
+        |> Array.toList
+    let gamma = calculateGamma report
+    let epsilon = calculateEpsilon report 
+    Assert.Equal(1092896,gamma*epsilon)
