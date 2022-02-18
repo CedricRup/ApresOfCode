@@ -1,0 +1,6 @@
+.ionide/
+[Bb]in
+[Dd]ebug*/
+*.lib
+*.sbr
+obj/
