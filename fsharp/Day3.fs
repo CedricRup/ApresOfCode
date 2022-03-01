@@ -91,20 +91,25 @@ let ``Day 3 part 1`` () =
 
 
 let calculateAdvancedRate transform (diagnosticReport: String list) =
-    let rec filterByMostCommonBitInColumn (diagnosticReport: String list) column =
-        let mostCommonBitInChar = 
-            getColumnFromReport diagnosticReport column
-            |> determineMostCommonBit
-            |> transform
-            |> string
-            |> char
-        let remainingWords = diagnosticReport |> List.filter (fun word -> word[column]  = mostCommonBitInChar)
-        match remainingWords with
-            | [] -> failwith "Bang"
-            | [word] -> word
-            | array -> if (array.Head.Length > (column + 1)) then filterByMostCommonBitInColumn remainingWords (column+1) else array[0] 
-
-    let word = filterByMostCommonBitInColumn diagnosticReport 0
+    let filterByMostCommonBitInColumn (diagnosticReport: String list) column =
+        match diagnosticReport with
+        | [_] -> diagnosticReport
+        | _ ->
+            let mostCommonBitInChar = 
+                getColumnFromReport diagnosticReport column
+                |> determineMostCommonBit
+                |> transform
+                |> string
+                |> char
+            diagnosticReport |> List.filter (fun word -> word[column]  = mostCommonBitInChar)
+    
+    
+    let wordLength = diagnosticReport.Head.Length
+    let remainingWord =
+        [0.. wordLength-1]
+        |> List.fold filterByMostCommonBitInColumn diagnosticReport
+    
+    let word = remainingWord[0]
     word.ToCharArray() |> Array.map (string >> int) |> Array.toList |> fromBitWordToNumber
 
 let calculateOxygenGeneratorRate = calculateAdvancedRate id
