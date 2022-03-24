@@ -5,11 +5,6 @@ open FsUnit.Xunit
 open FSharpx.Prelude
 open FSharpx.String
 
-let splitLines = splitString  [|"\r\n"|] StringSplitOptions.None
-let splitBlanks = splitString [|" "|] StringSplitOptions.RemoveEmptyEntries
-let splitDraw = splitString [|","|]  StringSplitOptions.RemoveEmptyEntries
-let splitBlocks = splitString [|"\r\n\r\n"|] StringSplitOptions.RemoveEmptyEntries
-
 type Square = Number of int | Marked
 
 let isMarked = function 
@@ -70,6 +65,12 @@ let getScoreFromFirstWinningGrid draw (grids : Grid list) =
     |> List.collect distributeDrawAndGrids
     |> List.tryFind isGridBingo
     |> Option.map calculateBingoScore
+
+
+let splitLines = splitString  [|"\r\n"|] StringSplitOptions.None
+let splitBlanks = splitString [|" "|] StringSplitOptions.RemoveEmptyEntries
+let splitDraw = splitString [|","|]  StringSplitOptions.RemoveEmptyEntries
+let splitBlocks = splitString [|"\r\n\r\n"|] StringSplitOptions.RemoveEmptyEntries
 
 let parseGrid (input : string) =
     input
@@ -173,3 +174,64 @@ let ``Get score from first winning grid with multiple grids`` () =
 let ``Day 4 part 1`` () =
     let (draw,grids)  = parseInputFile()
     grids |> getScoreFromFirstWinningGrid draw |> Option.get |> should equal 55770
+
+
+let getScoreFromLastWinningGrid draw grids =
+    let filterBingoedAndPlayNumberOnEachGrid (state : int * Grid list) (number:int) =
+        let _,grids = state
+        (number, grids |> List.filter (``BINGO?`` >> not ) |> List.map  (markNumber number) )
+
+    let distributeDrawAndGrids (lastDrawn,grids) = 
+        grids |> List.map (fun g -> (lastDrawn,g)) 
+
+    let toDraw = (-1,grids)
+
+    let isGridBingo = (snd >> ``BINGO?``)
+
+    let calculateBingoScore (lastDrawn,grid) = calculateGridScore grid * lastDrawn 
+    
+    draw
+    |> List.scan filterBingoedAndPlayNumberOnEachGrid toDraw
+    |> List.collect distributeDrawAndGrids
+    |> List.filter isGridBingo
+    |> List.tryLast
+    |> Option.map calculateBingoScore
+
+
+[<Fact>]
+let ``Get score from last winning grid with multiple grids`` () =
+    let grids =
+        [gridAsText; gridAsText2; gridAsText3]
+        |> List.map parseGrid
+    let draw = [7;4;9;5;11;17;23;2;0;14;21;24;10;16;13;6;15;25;12;22;18;20;8;19;3;26;1]
+    grids |> getScoreFromLastWinningGrid draw |> Option.get |> should equal 1924
+
+[<Fact>]
+let ``Day 4 part 2`` () =
+    let (draw,grids)  = parseInputFile()
+    grids |> getScoreFromLastWinningGrid draw |> Option.get |> should equal 2980
+
+
+
+[<Fact>]
+let expampleOfScan () = 
+    // Fold =  (Acc -> E -> Acc) ->  Acc -> E list -> Acc
+    // Ex: sum = (int -> int -> int) ->  0 -> int list
+
+    //Scan = (Acc -> E -> Acc) ->  Acc -> E list -> Acc list
+    // Gives all intermediary values
+
+    let addition = List.fold (+) 0
+    let resultat = addition [0;1;2;3]
+    resultat |> should equal 6
+    List.scan (+) 0 [0;1;2;3] |> should equal  [0;0;1;3;6]
+
+    let tryParse (string:string) =
+        match Int32.TryParse(string) with
+        | (true,resultat) -> Some resultat
+        | (false,_) -> None
+
+    //List.choose 
+    let choose chooser list = list |> List.map chooser |> List.filter Option.isSome |> List.map Option.get
+    let chooseResult = choose tryParse ["a";"17";"Toto";"Quinze";"53"]
+    List.choose tryParse ["a";"17";"Toto";"Quinze";"53"] |> should equal chooseResult
