@@ -28,6 +28,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="FParsec" Version="1.1.1" />
     <PackageReference Include="FSharpx.Extras" Version="3.0.0" />
     <PackageReference Include="FsUnit.xUnit" Version="4.2.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.11.0" />

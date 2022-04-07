@@ -2,6 +2,8 @@ module Day5
 
 open Xunit
 open FsUnit.Xunit
+open FParsec.CharParsers
+open FParsec.Primitives
 
 
 type Point = {
@@ -17,10 +19,30 @@ type VentLine = {
 let point (x,y) = {x=x;y=y}
 let ventLine (start,finish) = {start=start;finish=finish} 
 
-let countOverlaps input = 
+
+let (|Vertical|_|) ventLine =
+    let {start={x=xs;y=ys};finish={x=xf;y=yf}} = ventLine
+    if xs = xf then Some(xs,[min ys yf .. max ys yf])  else None
+
+let (|Horizontal|_|) ventLine =
+    let {start={x=xs;y=ys};finish={x=xf;y=yf}} = ventLine
+    if ys = yf then Some([min xs xf .. max xs xf],ys)  else None
+
+let toPoints =
+    function
+    | Vertical (x,ys) -> ys |> List.map (fun y -> point(x,y))
+    | Horizontal (xs,y) -> xs |> List.map (fun x -> point(x,y))
+    | _ -> []
+    
+let countOverlaps input =
+    input
+    |> List.collect toPoints
+    |> List.countBy id
+    |> List.filter (fun (_,count) -> count >= 2)
+    |> List.length
 
 [<Fact>]
-let ``Two vertical ??``() =
+let ``Two vertical fully overlaping, with start and finish switched``() =
     let input =
         [
         ventLine (point (0, 0), point (0, 1))
@@ -28,6 +50,28 @@ let ``Two vertical ??``() =
         ]
     let result = countOverlaps input
     result |> should equal 2
+
+
+[<Fact>]
+let ``Two vertical fully overlaping, with start and finish switched not on x=0``() =
+    let input =
+        [
+        ventLine (point (1, 0), point (1, 1))
+        ventLine (point (1, 1), point (1, 0))
+        ]
+    let result = countOverlaps input
+    result |> should equal 2
+    
+[<Fact>]
+let ``Two vertical not overlaping``() =
+    let input =
+        [
+        ventLine (point (1, 0), point (1, 1))
+        ventLine (point (2, 1), point (2, 0))
+        ]
+    let result = countOverlaps input
+    result |> should equal 0
+
 
 [<Fact>]
 let ``Two vertical one point``() =
@@ -39,9 +83,18 @@ let ``Two vertical one point``() =
     let result = countOverlaps input
     result |> should equal 1
 
+[<Fact>]
+let ``Two horizontal with overlapping one point``() =
+    let input =
+        [
+        ventLine (point (0, 0), point (1, 0))
+        ventLine (point (1, 0), point (2, 0))
+        ]
+    let result = countOverlaps input
+    result |> should equal 1
 
 
-//[<Fact>]
+[<Fact>]
 let ``Part 1 example``() =
     let input =
         [
@@ -58,3 +111,20 @@ let ``Part 1 example``() =
         ]
     let result = countOverlaps input
     result |> should equal 5
+
+
+let pointParser = pipe3 pint32 (pstring ",") (pint32 .>>spaces) (fun x _ y -> point (x,y))
+let ventParser = pipe3 pointParser (pstring "->" .>> spaces) pointParser (fun start _ finish -> ventLine (start,finish))
+
+let inputParser = many ventParser
+
+[<Fact>]
+let ``Day 5 part 1``() =
+    let theBigString = System.IO.File.ReadAllText "day5Input.txt"
+    let input = run inputParser theBigString
+    let parseResult =
+            match input with
+            | Success(ventLines, _, _) -> ventLines
+            | Failure(s, _, _) -> failwith s
+    parseResult |> countOverlaps |> should equal 4728
+    
