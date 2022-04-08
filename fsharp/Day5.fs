@@ -28,11 +28,20 @@ let (|Horizontal|_|) ventLine =
     let {start={x=xs;y=ys};finish={x=xf;y=yf}} = ventLine
     if ys = yf then Some([min xs xf .. max xs xf],ys)  else None
 
+let (|Diagonal|) ventLine =
+    let {start={x=xs;y=ys} as start;finish={x=xf;y=yf} as finish} = ventLine
+    let horizontalDirection = if (xs < xf) then 1 else -1    
+    let verticalDirection = if (ys < yf) then 1 else -1
+    (start,finish,horizontalDirection,verticalDirection)
+    
 let toPoints =
     function
     | Vertical (x,ys) -> ys |> List.map (fun y -> point(x,y))
     | Horizontal (xs,y) -> xs |> List.map (fun x -> point(x,y))
-    | _ -> []
+    | Diagonal(start, finish,horizontalDirection,verticalDirection) ->
+        let horizontals = [start.x .. horizontalDirection ..finish.x]
+        let verticals = [start.y .. verticalDirection ..finish.y]
+        List.zip horizontals verticals |> List.map point 
     
 let countOverlaps input =
     input
@@ -95,7 +104,7 @@ let ``Two horizontal with overlapping one point``() =
 
 
 [<Fact>]
-let ``Part 1 example``() =
+let ``Part 2 example``() =
     let input =
         [
         ventLine (point (0, 9), point (5, 9))
@@ -110,8 +119,7 @@ let ``Part 1 example``() =
         ventLine (point (5, 5), point (8, 2))
         ]
     let result = countOverlaps input
-    result |> should equal 5
-
+    result |> should equal  12
 
 let pointParser = pipe3 pint32 (pstring ",") (pint32 .>>spaces) (fun x _ y -> point (x,y))
 let ventParser = pipe3 pointParser (pstring "->" .>> spaces) pointParser (fun start _ finish -> ventLine (start,finish))
@@ -119,12 +127,12 @@ let ventParser = pipe3 pointParser (pstring "->" .>> spaces) pointParser (fun st
 let inputParser = many ventParser
 
 [<Fact>]
-let ``Day 5 part 1``() =
+let ``Day 5 part 2``() =
     let theBigString = System.IO.File.ReadAllText "day5Input.txt"
     let input = run inputParser theBigString
     let parseResult =
             match input with
             | Success(ventLines, _, _) -> ventLines
             | Failure(s, _, _) -> failwith s
-    parseResult |> countOverlaps |> should equal 4728
+    parseResult |> countOverlaps |> should equal 17717
     
