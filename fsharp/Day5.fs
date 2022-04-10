@@ -135,4 +135,3 @@ let ``Day 5 part 2``() =
             | Success(ventLines, _, _) -> ventLines
             | Failure(s, _, _) -> failwith s
     parseResult |> countOverlaps |> should equal 17717
-    
