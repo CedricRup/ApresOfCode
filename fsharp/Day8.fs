@@ -1,8 +1,10 @@
 module Day8
 
+open System.Text
 open Xunit
 open FsUnit.Xunit
 open FParsec
+open FSharpx.String
 
 
 let wordsSeparatedBySpaces = sepBy (manyChars letter) (pstring " ")
@@ -28,7 +30,7 @@ let resultOrDie = function
 
 let count1478 input =
     let oneIf1478and0 (s:string) =
-        match (s.Length) with
+        match s.Length with
         | 2|3|4|7 -> 1
         | _ -> 0
     input |> List.collect snd |> List.sumBy oneIf1478and0  
@@ -44,42 +46,50 @@ let ``Day 8 part 1``() =
     count1478 input |> should equal 493
     
 
-let lineSample = "acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf"
+let lineSample = "acedgfb cdfbe gcdfa fbcad dab cefabd cdfgeb eafb cagedb ab | cdfeb fcadb cdfeb cdbaf
+"
 
 
 let sumOfAllDisplays samples =
-    let line = List.head samples |> fst
-    let sets = line  |> List.map Set.ofList
-    let setsByLength = List.groupBy Set.count sets |> Map.ofList
+    let toWiringSets = List.map (toCharArray >> Set.ofArray)
     
-    let one = setsByLength[2] |> List.exactlyOne
-    let four = setsByLength[4] |> List.exactlyOne
-    let seven = setsByLength[3] |> List.exactlyOne
-    let eigth = setsByLength[7] |> List.exactlyOne
-   
-    let nine = setsByLength[6] |> List.filter (fun s -> Set.contains s four) |> List.exactlyOne
-    let zero = setsByLength[6] |> List.filter (fun s -> s <> nine && Set.contains s one) |> List.exactlyOne
-    let six = setsByLength[6] |> List.filter (fun s -> s <> nine && s <> zero) |> List.exactlyOne
-    0
-      
-//2 3 5 ont meme nombre
-//3 inclus 1
-//9 inclus 5
-//2 est celui qui reste*)  
+    let transcode sets x =        
+        let setsByLength = List.groupBy Set.count sets |> Map.ofList
+        
+        let one = setsByLength[2] |> List.exactlyOne
+        let four = setsByLength[4] |> List.exactlyOne
+        let seven = setsByLength[3] |> List.exactlyOne
+        let eigth = setsByLength[7] |> List.exactlyOne
     
+        let nine = setsByLength[6] |> List.filter (fun s -> Set.isSuperset s four) |> List.exactlyOne
+        let zero = setsByLength[6] |> List.filter (fun s -> s <> nine && Set.isSuperset s one) |> List.exactlyOne
+        let six = setsByLength[6] |> List.filter (fun s -> s <> nine && s <> zero) |> List.exactlyOne
+        
+        let three = setsByLength[5] |> List.filter (fun s -> Set.isSuperset s one) |> List.exactlyOne
+        let five = setsByLength[5] |> List.filter (fun s -> Set.isSuperset nine s && s <> three) |> List.exactlyOne
+        let two = setsByLength[5] |> List.filter (fun s -> s <> three && s <> five) |> List.exactlyOne
+        
+        let toDigitMap = Map [ (one, "1"); (two, "2"); (three, "3"); (four, "4"); (five, "5"); (six, "6"); (seven, "7"); (eigth, "8"); (nine, "9"); (zero, "0") ]
+        toDigitMap[x]
+    
+    let toPairOfWiringSets (g,d) = toWiringSets g, toWiringSets d
+    let toTranscoderAndInputs (g,d) = transcode g, d
+    let toDigits (transcoderFunction,inputs) = List.map transcoderFunction inputs
+    let toNumber = String.concat "" >> int
+    
+    samples |> List.sumBy (toPairOfWiringSets >> toTranscoderAndInputs >> toDigits >> toNumber)
     
 [<Fact>]
 let ``Sum of a line``() =
     let input = run inputParser lineSample |> resultOrDie
     sumOfAllDisplays input |> should equal 5353
     
+[<Fact>]
+let ``Sum for sample``() =
+    let input = run inputParser sample |> resultOrDie
+    sumOfAllDisplays input |> should equal 61229
     
-(*0 1 3 3 4 5 6 7 8 9 
-
-6 et 9 0 ont 6 segments,
-9 à les segment de 4
-Le 0 contient le 1
-2 3 5 ont meme nombre
-3 inclus 1
-9 inclus 5
-2 est celui qui reste*)
+[<Fact>]
+let ``Day 8 part 2``() =
+    let input = runParserOnFile inputParser () "day8Input.txt" Encoding.UTF8 |> resultOrDie
+    sumOfAllDisplays input |> should equal 1010460
