@@ -69,17 +69,22 @@ let ``Day 9 Part 1`` () =
 let sizeBasin heightmap point =
     let getHeight = getHeight heightmap
     let neighbors = neighbors heightmap
-    let rec sizeBasin alreadyCounted point  =
+    let rec sizeBasin alreadyCounted points  =
         let alreadyCounted = Set.add point alreadyCounted
-        let referenceHeight = getHeight  point
-        let isNotCountedYet point = Set.contains point alreadyCounted |> not
-        let isInBasin point  =
-            let height = getHeight point
-            height <> 9 && height > referenceHeight
-        let shouldBeConsideredNeighbor point = isInBasin point && isNotCountedYet point 
-        let neighbors = neighbors point |> List.filter shouldBeConsideredNeighbor
-        neighbors |> List.fold sizeBasin alreadyCounted
-    sizeBasin Set.empty  point |> Set.count
+        let selectNeighbors point =
+            let referenceHeight = getHeight  point
+            let isNotCountedYet point = Set.contains point alreadyCounted |> not
+            let isInBasin point  =
+                let height = getHeight point
+                height <> 9 && height > referenceHeight
+            let shouldBeConsideredNeighbor point = isInBasin point && isNotCountedYet point 
+            neighbors point |> List.filter shouldBeConsideredNeighbor
+        let nextPoints = points |> List.collect selectNeighbors
+        let alreadyCounted = Set.union alreadyCounted (Set.ofList nextPoints)
+        match nextPoints with
+        | [] -> alreadyCounted
+        | _ -> sizeBasin alreadyCounted nextPoints
+    sizeBasin Set.empty  [point] |> Set.count
     
 [<Fact>]
 let ``Basin with only lowpoint`` () =
