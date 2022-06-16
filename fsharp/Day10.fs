@@ -1,6 +1,7 @@
 module Day10
 
 open FSharpx
+open FSharpx.Text
 open Xunit
 open FsUnit.Xunit
 
@@ -38,8 +39,8 @@ let parseChar alreadyOpened currentChar =
       
 
 let parse line  =
-    let seekIncomplete =
-           function
+    let seekIncomplete leftOpened =
+           match leftOpened with
            | [] -> line |> Ok
            | notEmpty ->
                List.map toClosing notEmpty
@@ -51,7 +52,18 @@ let parse line  =
     |> String.toCharArray
     |> resultFold parseChar []
     |> Result.bind seekIncomplete
-    
+
+let totalSyntaxErrorScore lines =
+    let toSyntaxScore = function
+        | Error (Corrupted x) ->
+            match x with
+            | ')' -> 3
+            | ']'-> 57
+            | '}' -> 1197 
+            | '>' -> 25137
+            | _ -> failwith "should not happen"
+        | _ -> 0
+    lines |> List.map parse |> List.sumBy toSyntaxScore  
    
 [<Fact>]
 let ``empty is a legal navigation line`` () =
@@ -88,3 +100,22 @@ let ``neighbors are ok`` () =
 [<Fact>]
 let ``corruption along the way`` () =
     "{[]<]()}" |> parse |> should equal (ParseResult.Error <| Corrupted ']' )
+    
+[<Fact>]
+let rec ``calculate total Syntax ErrorScore`` () =
+    let lines = """[({(<(())[]>[[{[]{<()<>>
+[(()[<>])]({[<{<<[]>>(
+{([(<{}[<>[]}>{[]{[(<()>
+(((({<>}<{<{<>}{[]{[]{}
+[[<[([]))<([[{}[[()]]]
+[{[{({}]{}}([{[{{{}}([]
+{<[[]]>}<{[{[{[]{()[[[]
+[<(<(<(<{}))><([]([]()
+<{([([[(<>()){}]>(<<{{
+<{([{{}}[<[[[<>{}]]]>[]]"""
+    lines |> Strings.split '\n' |> Array.toList |> totalSyntaxErrorScore |> should equal 26397
+    
+[<Fact>]
+let rec ``Day 10 part 1`` () =
+    let lines = System.IO.File.ReadAllLines "day10Input.txt"
+    lines |> Array.toList |> totalSyntaxErrorScore |> should equal 411471
