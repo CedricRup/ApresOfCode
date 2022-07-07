@@ -10,15 +10,17 @@ type Octopus = int
 type Cavern = Octopus[,]
 
 let step stepCount cavern : int =
+    let cavernSize = Array2D.length2 cavern
+    
     let rec energizeOctupus (cavern: Cavern) x  =
         let newEnergy = (Array2D.get cavern 0 x) + 1
         Array2D.set cavern 0 x newEnergy
-        if (newEnergy > 9) then
+        if (newEnergy > 9 && x < (cavernSize - 1)) then
                energizeOctupus cavern (x + 1)  
         else cavern     
        
     let folder cavern _ =
-        [0..1] |> List.fold  energizeOctupus cavern
+        [0..cavernSize - 1] |> List.fold  energizeOctupus cavern
         
     
     [1..stepCount]
