@@ -10,9 +10,24 @@ type Octopus = int
 type Cavern = Octopus[,]
 
 let step stepCount cavern : int =
-    cavern
-    |> Array2D.map (fun octupusEnergy ->  (octupusEnergy + stepCount) / 10) 
-    |>  Seq.cast<Octopus> |> Seq.sum
+    let rec energizeOctupus (cavern: Cavern) x  =
+        let newEnergy = (Array2D.get cavern 0 x) + 1
+        Array2D.set cavern 0 x newEnergy
+        if (newEnergy > 9) then
+               energizeOctupus cavern (x + 1)  
+        else cavern     
+       
+    let folder cavern _ =
+        [0..1] |> List.fold  energizeOctupus cavern
+        
+    
+    [1..stepCount]
+    |> List.fold folder cavern
+    |> Seq.cast<Octopus>
+    |> Seq.sumBy (fun octupusEnergy ->  octupusEnergy / 10)
+    
+    
+     
      
     
 [<Fact>]
