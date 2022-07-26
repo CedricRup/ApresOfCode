@@ -19,27 +19,35 @@ let generateEveryStep stepCount cavern =
     let cavernYSize = Array2D.length1 cavern
     let isInbounds (x,y) = x >= 0 && x < cavernXSize && y >= 0 && y < cavernYSize
     
-    let rec energizeOctupus (cavern: Cavern) (x,y)  =
+    let treatOctopus (cavern,points) (x,y) =
         let octopus = (Array2D.get cavern y x)
         match octopus with
-        | Flashed -> cavern
+        | Flashed -> (cavern,points)
         | Energized energy ->
             let newEnergy = energy + 1
             let octopus = if newEnergy = 10 then Flashed else Energized newEnergy
             Array2D.set cavern y x octopus    
             if (octopus = Flashed) then
-                [(x-1,y-1);(x,y-1);(x+1,y-1);(x-1,y);(x+1,y);(x-1,y+1);(x,y+1);(x+1,y+1)]
-                |> List.filter isInbounds
-                |> List.fold energizeOctupus cavern
-            else cavern     
-       
-    let step cavern _ =
+                let newPoints = [(x-1,y-1);(x,y-1);(x+1,y-1);(x-1,y);(x+1,y);(x-1,y+1);(x,y+1);(x+1,y+1)]
+                             |> List.filter isInbounds
+                (cavern,List.append points newPoints)
+            else (cavern,points)
+    
+    let rec energizeOctupus (cavern: Cavern) points  =
+        let result = List.fold treatOctopus (cavern,[]) points
+        match result with
+        | _,[] -> result
+        | cavern,xs -> energizeOctupus cavern xs
+    
+    let step cavern _=
         let resetedCavern = Array2D.map resetOctopus cavern
-        [
-        for y in 0.. cavernYSize - 1 do
-        for x in 0.. cavernXSize - 1 do
-        yield (x,y)
-        ] |> List.fold  energizeOctupus resetedCavern
+        let resultCavern,_ =
+            [
+            for y in 0.. cavernYSize - 1 do
+            for x in 0.. cavernXSize - 1 do
+            yield (x,y)
+            ] |> energizeOctupus resetedCavern
+        resultCavern    
 
     Seq.init stepCount id
     |> Seq.scan step cavern
