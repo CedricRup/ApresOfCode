@@ -19,25 +19,25 @@ let generateEveryStep stepCount cavern =
     let cavernYSize = Array2D.length1 cavern
     let isInbounds (x,y) = x >= 0 && x < cavernXSize && y >= 0 && y < cavernYSize
     
-    let treatOctopus (cavern,points) (x,y) =
+    let treatOctopus (cavern,octopussesToEnergizeAfter) (x,y) =
         let octopus = (Array2D.get cavern y x)
         match octopus with
-        | Flashed -> (cavern,points)
+        | Flashed -> (cavern,octopussesToEnergizeAfter)
         | Energized energy ->
             let newEnergy = energy + 1
             let octopus = if newEnergy = 10 then Flashed else Energized newEnergy
             Array2D.set cavern y x octopus    
             if (octopus = Flashed) then
-                let newPoints = [(x-1,y-1);(x,y-1);(x+1,y-1);(x-1,y);(x+1,y);(x-1,y+1);(x,y+1);(x+1,y+1)]
-                             |> List.filter isInbounds
-                (cavern,List.append points newPoints)
-            else (cavern,points)
+                let nextOctopusses = [(x-1,y-1);(x,y-1);(x+1,y-1);(x-1,y);(x+1,y);(x-1,y+1);(x,y+1);(x+1,y+1)]
+                                     |> List.filter isInbounds
+                (cavern,List.append octopussesToEnergizeAfter nextOctopusses)
+            else (cavern,octopussesToEnergizeAfter)
     
-    let rec energizeOctupus (cavern: Cavern) points  =
-        let result = List.fold treatOctopus (cavern,[]) points
+    let rec energizeOctupusses cavern octupussesCoordinates  =
+        let result = List.fold treatOctopus (cavern,[]) octupussesCoordinates
         match result with
         | _,[] -> result
-        | cavern,xs -> energizeOctupus cavern xs
+        | cavern,nextOctopusses -> energizeOctupusses cavern nextOctopusses
     
     let step cavern _=
         let resetedCavern = Array2D.map resetOctopus cavern
@@ -46,24 +46,24 @@ let generateEveryStep stepCount cavern =
             for y in 0.. cavernYSize - 1 do
             for x in 0.. cavernXSize - 1 do
             yield (x,y)
-            ] |> energizeOctupus resetedCavern
+            ] |> energizeOctupusses resetedCavern
         resultCavern    
 
     Seq.init stepCount id
     |> Seq.scan step cavern
-
+   
 let countFlashes stepCount cavern : int =
     generateEveryStep stepCount cavern
     |> Seq.collect Seq.cast<Octopus>
     |> Seq.sumBy (function |Flashed -> 1 | _ -> 0)
 
-let allIgnited cavern =
+let areAllOctopussesFlashed cavern =
     cavern
     |> Seq.cast<Octopus>
     |> Seq.forall (function | Flashed -> true | _ -> false)
 
-let firstSync cavern =
-    generateEveryStep Int32.MaxValue cavern |> Seq.takeWhile (fun c -> allIgnited c |> not) |> Seq.length
+let firstSyncStep cavern =
+    generateEveryStep Int32.MaxValue cavern |> Seq.takeWhile (areAllOctopussesFlashed >> not) |> Seq.length
     
 let splitLines = splitString  [|"\n"|] StringSplitOptions.RemoveEmptyEntries
 
@@ -158,10 +158,10 @@ let ``Day 11 part 1`` () =
 [<Fact>]
 let ``Day 11 part 2 sample`` () =
     let cavern = parse sampleCavern
-    cavern |> firstSync |> should equal 195
+    cavern |> firstSyncStep |> should equal 195
 
 [<Fact>]
 let ``Day 11 part 2`` () =
     let text = IO.File.ReadAllText "day11Input.txt"
     let cavern = parse text
-    cavern |> firstSync |> should equal 298
+    cavern |> firstSyncStep |> should equal 298
