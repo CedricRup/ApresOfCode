@@ -10,7 +10,7 @@ type Octopus =  | Ignited
                 | Energized of int
 type Cavern = Octopus[,]
 
-let step stepCount cavern : int =
+let evolveCavern stepCount cavern =
     let cavernXSize = Array2D.length2 cavern
     let cavernYSize = Array2D.length1 cavern
     let isInbounds (x,y) = x >= 0 && x < cavernXSize && y >= 0 && y < cavernYSize
@@ -23,7 +23,9 @@ let step stepCount cavern : int =
             let octopus = if newEnergy = 10 then Ignited else Energized newEnergy
             Array2D.set cavern y x octopus    
             if (octopus = Ignited) then
-                [(x-1,y-1);(x,y-1);(x+1,y-1);(x-1,y);(x+1,y);(x-1,y+1);(x,y+1);(x+1,y+1)] |> List.filter isInbounds |> List.fold energizeOctupus cavern
+                [(x-1,y-1);(x,y-1);(x+1,y-1);(x-1,y);(x+1,y);(x-1,y+1);(x,y+1);(x+1,y+1)]
+                |> List.filter isInbounds
+                |> List.fold energizeOctupus cavern
             else cavern     
        
     let folder cavern _ =
@@ -36,12 +38,22 @@ let step stepCount cavern : int =
         for x in 0.. cavernXSize - 1 do
         yield (x,y)
         ] |> List.fold  energizeOctupus resetedCavern
-        
-    
-    [1..stepCount]
-    |> List.scan folder cavern
+
+    Seq.init stepCount id
+    |> Seq.scan folder cavern
+
+let step stepCount cavern : int =
+    evolveCavern stepCount cavern
     |> Seq.collect Seq.cast<Octopus>
     |> Seq.sumBy (function |Ignited -> 1 | _ -> 0)
+
+let allIgnited cavern =
+    cavern
+    |> Seq.cast<Octopus>
+    |> Seq.forall (function | Ignited -> true | _ -> false)
+
+let firstSync cavern =
+    evolveCavern Int32.MaxValue cavern |> Seq.takeWhile (fun c -> allIgnited c |> not) |> Seq.length
     
 let splitLines = splitString  [|"\n"|] StringSplitOptions.RemoveEmptyEntries
 
@@ -133,4 +145,13 @@ let ``Day 11 part 1`` () =
     let cavern = parse text
     cavern |> step 100 |> should equal 1721
 
+[<Fact>]
+let ``Day 11 part 2 sample`` () =
+    let cavern = parse sampleCavern
+    cavern |> firstSync |> should equal 195
 
+[<Fact>]
+let ``Day 11 part 2`` () =
+    let text = IO.File.ReadAllText "day11Input.txt"
+    let cavern = parse text
+    cavern |> firstSync |> should equal 298
