@@ -40,8 +40,7 @@ let toPoints =
     | Horizontal (xs,y) -> xs |> List.map (fun x -> point(x,y))
     | Diagonal ({start={x=xs;y=ys};finish={x=xf;y=yf}},dirX,dirY) ->
         List.zip [xs .. dirX .. xf] [ys .. dirY .. yf]     
-        |> List.map point    
-    | _ -> []
+        |> List.map point
     
 let countOverlaps input =
     input
