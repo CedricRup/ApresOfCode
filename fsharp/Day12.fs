@@ -11,8 +11,8 @@ type Cave =
     | End
     | BigCave of string
     | SmallCave of string
-    
-let countPathes input =
+
+let parseInput input =
     let parseCave cave =
         match cave with
         | "end" -> End
@@ -21,10 +21,14 @@ let countPathes input =
     let parseEdge edgeText =
         let edges = splitString [|"-"|] StringSplitOptions.TrimEntries edgeText
         (parseCave edges[0], parseCave edges[1])
-    let containsCave cavern edge  = fst edge = cavern || snd edge = cavern
     
-    let edges = splitString [|"\n"|] StringSplitOptions.RemoveEmptyEntries input |> Array.map parseEdge
+    splitString [|"\n"|] StringSplitOptions.RemoveEmptyEntries input |> Array.map parseEdge
+
+let containsCave cavern edge  = fst edge = cavern || snd edge = cavern
     
+    
+let countPathesVisitingSmallCavesOnce input =
+
     let rec countPathes' start edges  =
         let starts = edges |> Array.filter (containsCave start)
         let countPathesFolowingEdge remainingEdges (one, two)  =
@@ -37,28 +41,62 @@ let countPathes input =
             starts |> Array.sumBy (countPathesFolowingEdge nonStarts)
         | BigCave _ ->
             starts |> Array.sumBy (countPathesFolowingEdge edges)
-    countPathes' (SmallCave "start") edges
-                
-      
+    parseInput input |> countPathes' (SmallCave "start")
+
+
+type Status =
+    |CanVisitACaveTwice
+    |AlreadyVisited of Cave
+    |CannotRevisitAnyCave
+let countPathesMaybeVisitingASmallCaveTwice input =
+    
+    let rec countPathes' status path origin edges : string array  =
+        
+        let countPathesFolowingEdge (status:Status) path remainingEdges (one, two)  =
+                let newStart = if one = origin then two else one
+                countPathes' status path newStart remainingEdges
+        
+        let edgesToFollow = edges |> Array.filter (containsCave origin)
+        let edgesWithouOrigin = edges |> Array.filter (containsCave origin >> not)
+        match origin with
+        | End -> [|path + "-end"|]
+        | SmallCave "start" ->
+            let path = "start"
+            edgesToFollow |> Array.collect (countPathesFolowingEdge CanVisitACaveTwice path edgesWithouOrigin)
+        | SmallCave x ->
+            let path = path + "-" + x
+            match status with
+            | AlreadyVisited cave when cave = origin ->
+                edgesToFollow |> Array.collect (countPathesFolowingEdge CannotRevisitAnyCave path edgesWithouOrigin)
+            | CannotRevisitAnyCave | AlreadyVisited _ ->
+                edgesToFollow |> Array.collect (countPathesFolowingEdge status path edgesWithouOrigin)
+            | CanVisitACaveTwice ->
+                let firstWay = edgesToFollow |> Array.collect (countPathesFolowingEdge (AlreadyVisited origin) path edges)
+                let otherWay = edgesToFollow |> Array.collect (countPathesFolowingEdge CanVisitACaveTwice path edgesWithouOrigin)
+                Array.append firstWay otherWay
+        | BigCave x ->
+            let path = path + "-" + x
+            edgesToFollow |> Array.collect (countPathesFolowingEdge status path edges)
+    parseInput input |> countPathes' CanVisitACaveTwice "" (SmallCave "start") |> Set.ofArray |> Set.count     
     
     
 [<Fact>]
 let ``just start and end gives 1``() =
     let input = "start-end"
-    countPathes input |> should equal 1
+    countPathesVisitingSmallCavesOnce input |> should equal 1
 
 [<Fact>]
 let ``Straight path with 1 small cavern gives 1``() =
     let input = """start-a
 a-end"""
-    countPathes input |> should equal 1
+    countPathesVisitingSmallCavesOnce input |> should equal 1
     
 [<Fact>]
 let ``Straight path with 1 small cavern and shortcut gives 2``() =
     let input = """start-a
 a-end
 start-end"""
-    countPathes input |> should equal 2
+    countPathesVisitingSmallCavesOnce input |> should equal 2
     
 [<Fact>]
 let ``2 paths but one exit gives 2``() =
@@ -66,18 +104,20 @@ let ``2 paths but one exit gives 2``() =
 a-end
 start-b
 b-a"""
-    countPathes input |> should equal 2
+    countPathesVisitingSmallCavesOnce input |> should equal 2
 
-[<Fact>]
-let ``sample``() =
-    let input = """start-A
+
+let theSample = """start-A
 start-b
 A-c
 A-b
 b-d
 A-end
 b-end"""
-    countPathes input |> should equal 10
+
+[<Fact>]
+let ``sample for part 1``() =
+    countPathesVisitingSmallCavesOnce theSample |> should equal 10
 
 [<Fact>]
 let ``larger sample``() =
@@ -99,9 +139,25 @@ he-WI
 zg-he
 pj-fs
 start-RW"""
-    countPathes input |> should equal 226
+    countPathesVisitingSmallCavesOnce input |> should equal 226
 
 [<Fact>]
 let ``day 12 part 1``() =
     let input = System.IO.File.ReadAllText "day12input.txt"
-    countPathes input |> should equal 3292
+    countPathesVisitingSmallCavesOnce input |> should equal 3292
+    
+[<Fact>]
+let ``The sample for part 2``() =
+    countPathesMaybeVisitingASmallCaveTwice theSample |> should equal 36
+    
+[<Fact>]
+let ``beware not to count same path twice``() =
+    let input = """start-b
+b-d
+b-end"""
+    countPathesMaybeVisitingASmallCaveTwice input |> should equal 2
+    
+[<Fact>]
+let ``day 12 part 2``() =
+    let input = System.IO.File.ReadAllText "day12input.txt"
+    countPathesMaybeVisitingASmallCaveTwice input |> should equal 89592
