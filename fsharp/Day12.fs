@@ -11,6 +11,11 @@ type Cave =
     | End
     | BigCave of string
     | SmallCave of string
+    
+type Status =
+    | CanVisitACaveTwice
+    | AlreadyVisited of Cave
+    | CannotRevisitAnyCave
 
 let parseInput input =
     let parseCave cave =
@@ -25,30 +30,8 @@ let parseInput input =
     splitString [|"\n"|] StringSplitOptions.RemoveEmptyEntries input |> Array.map parseEdge
 
 let containsCave cavern edge  = fst edge = cavern || snd edge = cavern
-    
-    
-let countPathesVisitingSmallCavesOnce input =
 
-    let rec countPathes' start edges  =
-        let starts = edges |> Array.filter (containsCave start)
-        let countPathesFolowingEdge remainingEdges (one, two)  =
-                let newStart = if one = start then two else one
-                countPathes' newStart remainingEdges
-        match start with
-        | End -> 1
-        | SmallCave _ ->
-            let nonStarts = edges |> Array.filter (containsCave start >> not)
-            starts |> Array.sumBy (countPathesFolowingEdge nonStarts)
-        | BigCave _ ->
-            starts |> Array.sumBy (countPathesFolowingEdge edges)
-    parseInput input |> countPathes' (SmallCave "start")
-
-
-type Status =
-    |CanVisitACaveTwice
-    |AlreadyVisited of Cave
-    |CannotRevisitAnyCave
-let countPathesMaybeVisitingASmallCaveTwice input =
+let countPathes status input =
     
     let rec countPathes' status path origin edges : string array  =
         
@@ -56,13 +39,13 @@ let countPathesMaybeVisitingASmallCaveTwice input =
                 let newStart = if one = origin then two else one
                 countPathes' status path newStart remainingEdges
         
-        let edgesToFollow = edges |> Array.filter (containsCave origin)
-        let edgesWithouOrigin = edges |> Array.filter (containsCave origin >> not)
+        let edgesToFollow,edgesWithouOrigin = edges |> Array.partition (containsCave origin)
+        
         match origin with
         | End -> [|path + "-end"|]
         | SmallCave "start" ->
             let path = "start"
-            edgesToFollow |> Array.collect (countPathesFolowingEdge CanVisitACaveTwice path edgesWithouOrigin)
+            edgesToFollow |> Array.collect (countPathesFolowingEdge status path edgesWithouOrigin)
         | SmallCave x ->
             let path = path + "-" + x
             match status with
@@ -77,7 +60,14 @@ let countPathesMaybeVisitingASmallCaveTwice input =
         | BigCave x ->
             let path = path + "-" + x
             edgesToFollow |> Array.collect (countPathesFolowingEdge status path edges)
-    parseInput input |> countPathes' CanVisitACaveTwice "" (SmallCave "start") |> Set.ofArray |> Set.count     
+    parseInput input |> countPathes' status "" (SmallCave "start") |> Set.ofArray |> Set.count     
+
+let countPathesMaybeVisitingASmallCaveTwice  =
+    countPathes CanVisitACaveTwice 
+        
+    
+let countPathesVisitingSmallCavesOnce =
+    countPathes CannotRevisitAnyCave 
     
     
 [<Fact>]
