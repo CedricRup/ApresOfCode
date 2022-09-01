@@ -15,14 +15,13 @@ let nextStep cavern =
     cavern |> Array2D.map energizeOctupus
 
 let step stepCount (cavern: Cavern) : int =
-    let energizeOctupus octupusEnergy =
-        octupusEnergy + 1
     let folder (cavern : Cavern) _ = 
         cavern
         |> nextStep
    
     [1..stepCount]
     |> List.scan folder cavern
+    |> List.skip 1
     |> List.map (fun c -> c |> Seq.cast<Octopus> |> Seq.filter (fun o -> o = 0) |> Seq.length)
     |> Seq.sum
     
@@ -58,7 +57,7 @@ let ``Lonely octopus reset energy after flash`` () =
     let cavern = array2D [[9]]
     cavern |> nextStep |> Seq.cast<Octopus> |> Seq.head |> should equal 0
     
-//[<Fact>]
+[<Fact>]
 let ``A couple of unsynchronized octupusses`` () =
     let cavern = array2D [[9;8]]
     cavern |> step 1 |> should equal 2
