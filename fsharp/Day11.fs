@@ -12,11 +12,24 @@ type Octopus =
 type Cavern = Octopus[,]
 
 let nextStep cavern =
-    let energizeOctupus octupusEnergy =
-        match octupusEnergy with
-        | Flashed -> Flashed
-        | Energy i -> if i = 9 then Flashed else i + 1 |> Energy
-    cavern |> Array2D.map energizeOctupus |> Array2D.map (function Flashed -> Energy 0 | o -> o )
+    let dimX = Array2D.length2 cavern
+    let neighbors x y = [x+1, y] |> List.filter (fun (x,y) -> x < dimX) 
+    let energizeOctupus toEnergize x y octupus  =
+        if List.contains (x,y) toEnergize then  
+            match octupus with
+            | Flashed -> Flashed, []
+            | Energy i -> if i = 9 then Flashed , (neighbors x y) else i + 1 |> Energy, []
+        else octupus,[]
+    let rec toto cavern toEnergize =
+        match toEnergize with
+        | [] -> cavern
+        | _ ->
+            let result = Array2D.mapi (energizeOctupus toEnergize) cavern
+            let cavern = Array2D.map fst result
+            let toEnergize = Array2D.map snd result |> Seq.cast<(int * int) list> |> Seq.concat |> Seq.toList
+            toto cavern toEnergize
+    let toEnergize = Array2D.mapi (fun  x y  _ -> (x,y)) cavern |> Seq.cast<int * int> |> Seq.toList
+    toto cavern toEnergize |> Array2D.map (function Flashed -> Energy 0 | o -> o )
 
 let step stepCount (cavern: Cavern) : int =
     let folder (cavern : Cavern) _ = 
