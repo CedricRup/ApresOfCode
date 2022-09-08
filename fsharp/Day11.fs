@@ -1,9 +1,9 @@
 module Day11
 
-open FSharpx
-open FSharpx.Text
+open System
 open Xunit
 open FsUnit.Xunit
+open FSharpx.String
 
 
 type Octopus =
@@ -13,23 +13,31 @@ type Cavern = Octopus[,]
 
 let nextStep cavern =
     let dimX = Array2D.length2 cavern
-    let neighbors x y = [x+1, y] |> List.filter (fun (x,y) -> x < dimX) 
-    let energizeOctupus toEnergize x y octupus  =
-        if List.contains (x,y) toEnergize then  
-            match octupus with
-            | Flashed -> Flashed, []
-            | Energy i -> if i = 9 then Flashed , (neighbors x y) else i + 1 |> Energy, []
-        else octupus,[]
-    let rec toto cavern toEnergize =
+    let dimY = Array2D.length1 cavern
+    let addNeighbors x y toAppendTo =
+        [
+            (x-1, y-1);(x, y-1);(x+1, y-1)
+            (x-1, y);(x+1, y)
+            (x-1, y+1);(x, y+1);(x+1, y+1)
+        ] |> List.filter (fun (x,y) -> x < dimX && x >=0 && y >=0 && y <dimY)  |> List.append toAppendTo
+    let energizeFolder (cavern,toEnergize) (x,y) =
+        let octopus = Array2D.get cavern y x
+        match octopus with
+            | Flashed -> cavern, toEnergize
+            | Energy i ->
+                 let octopus =  if i = 9 then Flashed else Energy (i + 1)
+                 Array2D.set cavern y x octopus
+                 if octopus = Flashed then (cavern,addNeighbors x y toEnergize) else cavern,toEnergize
+        
+    let rec energize' cavern toEnergize =
         match toEnergize with
         | [] -> cavern
         | _ ->
-            let result = Array2D.mapi (energizeOctupus toEnergize) cavern
-            let cavern = Array2D.map fst result
-            let toEnergize = Array2D.map snd result |> Seq.cast<(int * int) list> |> Seq.concat |> Seq.toList
-            toto cavern toEnergize
-    let toEnergize = Array2D.mapi (fun  x y  _ -> (x,y)) cavern |> Seq.cast<int * int> |> Seq.toList
-    toto cavern toEnergize |> Array2D.map (function Flashed -> Energy 0 | o -> o )
+            let (cavern,toEnergize) = List.fold energizeFolder (cavern,[]) toEnergize
+            energize' cavern toEnergize
+    let cavern = cavern |> Array2D.map (function Flashed -> Energy 0 | o -> o )        
+    let toEnergize = Array2D.mapi (fun  y x  _ -> (x,y)) cavern |> Seq.cast<int * int> |> Seq.toList
+    energize' cavern toEnergize 
 
 let step stepCount (cavern: Cavern) : int =
     let folder (cavern : Cavern) _ = 
@@ -40,7 +48,7 @@ let step stepCount (cavern: Cavern) : int =
     [1..stepCount]
     |> List.scan folder cavern
     |> List.skip 1
-    |> List.map (fun c -> c |> Seq.cast<Octopus> |> Seq.filter (fun o -> o = Energy 0) |> Seq.length)
+    |> List.map (fun c -> c |> Seq.cast<Octopus> |> Seq.filter (fun o -> o = Flashed) |> Seq.length)
     |> Seq.sum
     
 [<Fact>]
@@ -73,10 +81,38 @@ let ``A couple of synchronized octupusses`` () =
 [<Fact>]
 let ``Lonely octopus reset energy after flash`` () =
     let cavern = array2D [[9]] |> Array2D.map Energy
-    cavern |> nextStep |> Seq.cast<Octopus> |> Seq.head |> should equal (Energy 0)
+    cavern |> nextStep |> Seq.cast<Octopus> |> Seq.head |> should equal (Flashed)
     
-//[<Fact>]
+[<Fact>]
 let ``A couple of unsynchronized octupusses`` () =
     let cavern = array2D [[9;8]] |> Array2D.map Energy
     cavern |> step 1 |> should equal 2
-   
+ 
+let example = @"5483143223
+2745854711
+5264556173
+6141336146
+6357385478
+4167524645
+2176841721
+6882881134
+4846848554
+5283751526"
+
+
+let splitLines = splitString [|"\n"|] StringSplitOptions.RemoveEmptyEntries
+let parse (input : string) = 
+    input
+    |> splitLines
+    |> Array.map (toCharArray >> Array.map (string >> int >> Energy))
+    |> array2D  
+
+[<Fact>]
+let ``Day 11 part 1 example `` () =
+    let cavern = parse example
+    cavern |> step 100 |> should equal 1656
+    
+[<Fact>]
+let ``Day 11 part 1  `` () =
+    let cavern = IO.File.ReadAllText "day11Input.txt" |>parse 
+    cavern |> step 100 |> should equal 1721
