@@ -38,6 +38,8 @@ let nextStep cavern =
     let cavern = cavern |> Array2D.map (function Flashed -> Energy 0 | o -> o )        
     let toEnergize = Array2D.mapi (fun  y x  _ -> (x,y)) cavern |> Seq.cast<int * int> |> Seq.toList
     energize' cavern toEnergize 
+    
+    
 
 let step stepCount (cavern: Cavern) : int =
     let folder (cavern : Cavern) _ = 
@@ -116,3 +118,35 @@ let ``Day 11 part 1 example `` () =
 let ``Day 11 part 1  `` () =
     let cavern = IO.File.ReadAllText "day11Input.txt" |>parse 
     cavern |> step 100 |> should equal 1721
+    
+
+
+let firstSyncFlash (cavern: Cavern) : int =
+    let folder (cavern : Cavern, _) stepNumber = 
+        (cavern |> nextStep,stepNumber)
+        
+   
+    seq {1..Int32.MaxValue}
+    |> Seq.scan folder (cavern,0)
+    |> Seq.skip 1
+    |> Seq.skipWhile (fun (c,_) -> c |> Seq.cast<Octopus> |> Seq.exists (fun o -> o <> Flashed))
+    |> Seq.head
+    |> snd
+    
+  
+
+[<Fact>]
+let ``All 9 cavern has sync flash after 1 step`` () =
+    let cavern = array2D [[9;9];[9;9]] |> Array2D.map Energy
+    cavern |> firstSyncFlash  |> should equal 1
+    
+[<Fact>]
+let ``Day 11 part 2 example `` () =
+    let cavern = parse example
+    cavern |> firstSyncFlash |> should equal 195
+    
+[<Fact>]
+let ``Day 11 part 2  `` () =
+    let cavern = IO.File.ReadAllText "day11Input.txt" |>parse 
+    cavern |> firstSyncFlash |> should equal 298
+    
